@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validador</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
@@ -14,20 +14,29 @@
 }
 
 body{
-    background:black;
     font-family:Arial;
-    overflow:hidden;
+    background:#0f172a;
+    color:white;
+    text-align:center;
 }
 
-/* VIDEO FULLSCREEN */
-#container{
+/* TITULO */
+#titulo{
+    padding:15px;
+    font-size:18px;
+    font-weight:bold;
+    background:#111827;
+}
+
+/* CONTENEDOR VIDEO */
+#videoContainer{
     position:relative;
-    width:100vw;
-    height:100vh;
+    width:100%;
+    height:65vh;
+    background:black;
 }
 
 video{
-    position:absolute;
     width:100%;
     height:100%;
     object-fit:cover;
@@ -37,50 +46,42 @@ video{
 #scanBox{
     position:absolute;
     border:4px solid #00ff88;
-    width:75%;
-    height:18%;
-    left:12.5%;
+    width:70%;
+    height:20%;
+    left:15%;
     top:40%;
     border-radius:10px;
 }
 
-/* PANEL INFERIOR */
+/* PANEL */
 #panel{
-    position:absolute;
-    bottom:0;
-    width:100%;
-    background:rgba(15,23,42,0.95);
-    padding:20px;
-    border-top-left-radius:20px;
-    border-top-right-radius:20px;
-    text-align:center;
-    color:white;
+    padding:15px;
 }
 
 /* NUMERO */
 #detectedNumber{
-    font-size:20px;
+    font-size:18px;
     margin-bottom:10px;
-    min-height:25px;
+    min-height:22px;
 }
 
 /* SELECT */
 select{
     width:100%;
-    padding:12px;
-    font-size:18px;
+    padding:10px;
+    font-size:16px;
     border-radius:8px;
-    margin-bottom:12px;
+    margin-bottom:10px;
     border:none;
 }
 
 /* BOTONES */
 button{
     width:100%;
-    padding:18px;
-    font-size:20px;
+    padding:16px;
+    font-size:18px;
     border:none;
-    border-radius:12px;
+    border-radius:10px;
     margin-bottom:10px;
     font-weight:bold;
 }
@@ -107,34 +108,38 @@ button{
 
 <body>
 
-<div id="container">
+<div id="titulo">
+VALIDADOR DE NUMEROS DE SERIE (BILLETES 10,20,50 SERIE B)
+</div>
+
+<div id="videoContainer">
     <video id="video" autoplay playsinline></video>
     <div id="scanBox"></div>
+</div>
 
-    <div id="panel">
+<div id="panel">
 
-        <div id="detectedNumber">
-            Número detectado: ---
-        </div>
-
-        <select id="corte">
-            <option value="10">Billete 10</option>
-            <option value="20">Billete 20</option>
-            <option value="50">Billete 50</option>
-        </select>
-
-        <button id="btnValidar">VALIDAR</button>
-        <button id="btnReset">ESCANEAR OTRO</button>
-
-        <div id="resultado"></div>
-
+    <div id="detectedNumber">
+        Número detectado: ---
     </div>
+
+    <select id="corte">
+        <option value="10">Billete 10</option>
+        <option value="20">Billete 20</option>
+        <option value="50">Billete 50</option>
+    </select>
+
+    <button id="btnValidar">VALIDAR</button>
+    <button id="btnReset">ESCANEAR OTRO</button>
+
+    <div id="resultado"></div>
+
 </div>
 
 <script>
 
 // =====================
-// RANGOS
+// RANGOS (INHABILITADOS)
 // =====================
 
 const rangos = {
@@ -242,9 +247,9 @@ function validar(){
     }
 
     if(inhabilitado){
-        mostrarResultado("❌ INHABILITADO",false);
+        mostrarResultado("BILLETE INHABILITADO",false);
     }else{
-        mostrarResultado("✅ HABILITADO",true);
+        mostrarResultado("BILLETE HABILITADO",true);
     }
 }
 
