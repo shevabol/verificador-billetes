@@ -15,8 +15,6 @@ body{
     color:white;
 }
 
-h2{ margin-top:20px; }
-
 #videoContainer{
     position:relative;
     width:100%;
@@ -65,7 +63,6 @@ button{
     display:block;
     width:80%;
     max-width:400px;
-    box-shadow:0 6px 15px rgba(0,0,0,0.4);
 }
 
 #numero{
@@ -117,37 +114,40 @@ async function iniciarOCR(){
 
 document.getElementById("activar").onclick = async function(){
 
+    numeroSpan.innerText = "---";
+    resultado.innerText = "";
+    ultimoNumero = "";
+
     if(!worker) await iniciarOCR();
 
     const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-            facingMode: { exact: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
+        video: { facingMode: { ideal: "environment" } }
     });
 
     video.srcObject = stream;
-    escaneando = true;
-    detectar();
+
+    // 🔹 Esperar que el video esté realmente listo
+    video.onloadedmetadata = () => {
+        escaneando = true;
+        detectar();
+    };
 };
 
 async function detectar(){
 
     if(!escaneando) return;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
     const vw = video.videoWidth;
     const vh = video.videoHeight;
 
-    if(vw === 0){
-        setTimeout(detectar, 300);
+    if(!vw || !vh){
+        setTimeout(detectar, 500);
         return;
     }
 
-    // 🔹 MISMA GEOMETRÍA QUE FUNCIONABA
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
     canvas.width = vw * 0.8;
     canvas.height = vh * 0.15;
 
@@ -171,14 +171,14 @@ async function detectar(){
         numeroSpan.innerText = limpio;
         numeroSpan.style.color="#00ff00";
         escaneando = false;
-        sonidoConfirmacion();
+        confirmar();
         return;
     }
 
-    setTimeout(detectar, 800);
+    setTimeout(detectar, 900);
 }
 
-function sonidoConfirmacion(){
+function confirmar(){
     const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
     audio.play();
 
