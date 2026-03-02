@@ -1,217 +1,234 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verificador de Billetes</title>
+<meta charset="UTF-8">
+<title>Verificador de Billetes BCB</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     text-align:center;
-    background:#f2f2f2;
-    margin:0;
+    background:#f4f4f4;
+    padding:20px;
 }
 
-h2{
-    margin-top:15px;
-}
-
-#videoContainer{
+#overlay{
     position:relative;
-    width:100%;
-    max-width:500px;
-    margin:auto;
+    display:inline-block;
 }
 
 video{
     width:100%;
-    border-radius:12px;
+    max-width:500px;
+    border-radius:15px;
+    margin-top:20px;
 }
 
-#scanArea{
+#guide{
     position:absolute;
-    width:80%;
-    height:15%;
-    top:42.5%;
-    left:10%;
-    border:3px solid red;
-    border-radius:8px;
+    border:3px solid lime;
+    width:60%;
+    height:12%;
+    left:20%;
+    top:50%;
+    transform:translateY(-50%);
     box-sizing:border-box;
+    pointer-events:none;
 }
 
 button{
     padding:15px;
-    margin:10px;
     font-size:18px;
+    margin:10px;
     border:none;
     border-radius:8px;
-    cursor:pointer;
-}
-
-#activar{
-    background:#007bff;
+    background:#000;
     color:white;
-}
-
-#validar{
-    background:#28a745;
-    color:white;
-    font-size:22px;
-    font-weight:bold;
-    width:80%;
+    width:90%;
     max-width:400px;
 }
 
-#numero{
-    font-size:24px;
-    font-weight:bold;
-    margin-top:10px;
+select, input{
+    padding:12px;
+    font-size:18px;
+    width:90%;
+    max-width:400px;
+    margin:10px 0;
+    text-align:center;
+    border-radius:8px;
+    border:1px solid #ccc;
 }
 
 #resultado{
     font-size:28px;
-    font-weight:bold;
     margin-top:15px;
+    font-weight:bold;
+}
+
+canvas{
+    display:none;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Escanear Número de Serie</h2>
+<h2>Verificador de Billetes Serie B</h2>
 
-<div id="videoContainer">
+<select id="corte">
+<option value="10">Bs 10</option>
+<option value="20">Bs 20</option>
+<option value="50">Bs 50</option>
+</select>
+
+<button onclick="iniciarCamara()">Activar Cámara</button>
+
+<div id="overlay">
     <video id="video" autoplay playsinline></video>
-    <div id="scanArea"></div>
+    <div id="guide"></div>
 </div>
 
-<button id="activar">Activar Cámara</button>
+<canvas id="canvas"></canvas>
 
-<p>Número detectado:</p>
-<p id="numero">---</p>
+<button onclick="capturar()">Capturar Número</button>
 
-<button id="validar">VERIFICAR</button>
+<input type="text" id="numero" placeholder="Número detectado">
 
-<p id="resultado"></p>
+<button onclick="verificar()">Verificar</button>
+
+<div id="resultado"></div>
 
 <script>
 
-const video = document.getElementById('video');
-const numeroSpan = document.getElementById('numero');
-const resultado = document.getElementById('resultado');
-
-let ultimoNumero = "";
-let escaneando = false;
+let currentStream;
 let worker;
+let workerReady = false;
 
+// === CREAR WORKER UNA SOLA VEZ ===
 async function iniciarOCR(){
-    worker = await Tesseract.createWorker('eng');
+    worker = await Tesseract.createWorker();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+    await worker.setParameters({
+        tessedit_char_whitelist: '0123456789',
+        tessedit_pageseg_mode: 7
+    });
+    workerReady = true;
 }
 
-document.getElementById("activar").onclick = async function(){
+iniciarOCR();
 
-    numeroSpan.innerText="---";
-    resultado.innerText="";
-    ultimoNumero="";
+const rangos = {
+10:[[77100001,77550000]],
+20:[[87280145,91646549]],
+50:[[67250001,67700000]]
+};
 
-    if(!worker) await iniciarOCR();
+async function iniciarCamara(){
 
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
+  try{
     const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-            facingMode: { exact: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:1280},
+        height:{ideal:720}
+      },
+      audio:false
     });
 
-    video.srcObject = stream;
-    escaneando = true;
-    detectar();
-};
+    currentStream = stream;
+    document.getElementById("video").srcObject = stream;
 
-async function detectar(){
-
-    if(!escaneando) return;
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-
-    if(vw === 0){
-        setTimeout(detectar, 300);
-        return;
-    }
-
-    canvas.width = vw * 0.8;
-    canvas.height = vh * 0.15;
-
-    ctx.drawImage(
-        video,
-        vw * 0.1,
-        vh * 0.425,
-        vw * 0.8,
-        vh * 0.15,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    const { data:{ text } } = await worker.recognize(canvas);
-
-    let limpio = text.replace(/[^0-9]/g,"");
-
-    if(limpio.length >= 7){
-        ultimoNumero = limpio;
-        numeroSpan.innerText = limpio;
-        numeroSpan.style.color="green";
-        escaneando = false;
-        feedback();
-        return;
-    }
-
-    setTimeout(detectar, 800);
+  }catch(e){
+    alert("No se pudo activar la cámara.");
+  }
 }
 
-function feedback(){
-    // Sonido
-    const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-    audio.play();
+async function capturar(){
 
-    // Vibración
-    if(navigator.vibrate){
-        navigator.vibrate(200);
-    }
+  if(!workerReady){
+    alert("OCR aún cargando, espera un momento...");
+    return;
+  }
+
+  let video = document.getElementById("video");
+  let canvas = document.getElementById("canvas");
+  let ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video,0,0);
+
+  let w = canvas.width * 0.60;
+  let h = canvas.height * 0.12;
+  let x = canvas.width * 0.20;
+  let y = (canvas.height - h) / 2;
+
+  let imageData = ctx.getImageData(x,y,w,h);
+  let data = imageData.data;
+
+  for(let i=0;i<data.length;i+=4){
+      let gray = 0.3*data[i] + 0.59*data[i+1] + 0.11*data[i+2];
+      let contrast = gray > 130 ? 255 : 0;
+      data[i]=data[i+1]=data[i+2]=contrast;
+  }
+
+  let tempCanvas = document.createElement("canvas");
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  tempCanvas.getContext("2d").putImageData(imageData,0,0);
+
+  const { data:{ text } } = await worker.recognize(tempCanvas);
+
+  let numeros = text.replace(/\D/g,'');
+
+  if(numeros.length >= 7 && numeros.length <= 9){
+      document.getElementById("numero").value = numeros;
+      document.getElementById("resultado").innerHTML="";
+  }else{
+      document.getElementById("numero").value="";
+  }
 }
 
-document.getElementById("validar").onclick = function(){
+function verificar(){
 
-    if(!ultimoNumero){
-        resultado.innerText="No se detectó número válido.";
-        resultado.style.color="orange";
-        return;
-    }
+let corte=document.getElementById("corte").value;
+let numero=document.getElementById("numero").value.trim();
+let resultado=document.getElementById("resultado");
 
-    const anulados = [
-        "01234567",
-        "02345678",
-        "03456789"
-    ];
+if(numero===""){
+resultado.innerHTML="⚠️ Número inválido";
+resultado.style.color="orange";
+return;
+}
 
-    if(anulados.includes(ultimoNumero)){
-        resultado.innerHTML="❌ INHABILITADO";
-        resultado.style.color="red";
-    }else{
-        resultado.innerHTML="✅ HABILITADO";
-        resultado.style.color="green";
-    }
-};
+let inhabilitado=false;
+
+rangos[corte].forEach(r=>{
+if(parseInt(numero)>=r[0] && parseInt(numero)<=r[1]){
+inhabilitado=true;
+}
+});
+
+if(inhabilitado){
+resultado.innerHTML="🔴 INHABILITADO";
+resultado.style.color="red";
+}else{
+resultado.innerHTML="🟢 HABILITADO";
+resultado.style.color="green";
+}
+}
 
 </script>
 
 </body>
 </html>
+
