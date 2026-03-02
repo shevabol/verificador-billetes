@@ -15,9 +15,7 @@ body{
     color:white;
 }
 
-h2{
-    margin-top:20px;
-}
+h2{ margin-top:20px; }
 
 #videoContainer{
     position:relative;
@@ -71,9 +69,10 @@ button{
 }
 
 #numero{
-    font-size:22px;
+    font-size:24px;
     font-weight:bold;
     color:#00ffcc;
+    margin-top:10px;
 }
 
 #resultado{
@@ -96,7 +95,7 @@ button{
 <button id="activar">Activar Cámara</button>
 
 <p>Número detectado:</p>
-<p id="numero"></p>
+<p id="numero">---</p>
 
 <button id="validar">VERIFICAR</button>
 
@@ -122,7 +121,9 @@ document.getElementById("activar").onclick = async function(){
 
     const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-            facingMode: { ideal: "environment" }
+            facingMode: { exact: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     });
 
@@ -146,6 +147,7 @@ async function detectar(){
         return;
     }
 
+    // 🔹 MISMA GEOMETRÍA QUE FUNCIONABA
     canvas.width = vw * 0.8;
     canvas.height = vh * 0.15;
 
@@ -167,25 +169,22 @@ async function detectar(){
     if(limpio.length >= 7){
         ultimoNumero = limpio;
         numeroSpan.innerText = limpio;
+        numeroSpan.style.color="#00ff00";
         escaneando = false;
-        confirmarLectura();
+        sonidoConfirmacion();
         return;
     }
 
     setTimeout(detectar, 800);
 }
 
-function confirmarLectura(){
-    // Sonido beep
+function sonidoConfirmacion(){
     const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
     audio.play();
 
-    // Vibración si el dispositivo lo permite
     if(navigator.vibrate){
         navigator.vibrate(200);
     }
-
-    numeroSpan.style.color = "#00ff00";
 }
 
 document.getElementById("validar").onclick = function(){
