@@ -9,10 +9,15 @@
 
 <style>
 body{
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     text-align:center;
-    background:#f4f4f4;
+    background:linear-gradient(135deg,#1e3c72,#2a5298);
     padding:20px;
+    color:white;
+}
+
+h2{
+    margin-bottom:10px;
 }
 
 #overlay{
@@ -29,7 +34,7 @@ video{
 
 #guide{
     position:absolute;
-    border:3px solid lime;
+    border:3px solid #00ff00;
     width:60%;
     height:12%;
     left:20%;
@@ -37,33 +42,56 @@ video{
     transform:translateY(-50%);
     box-sizing:border-box;
     pointer-events:none;
+    box-shadow:0 0 15px #00ff00;
 }
 
 button{
-    padding:15px;
+    padding:16px;
     font-size:18px;
     margin:10px;
     border:none;
-    border-radius:8px;
-    background:#000;
-    color:white;
+    border-radius:10px;
     width:90%;
     max-width:400px;
+    cursor:pointer;
+}
+
+.btn-activar{
+    background:#ff9800;
+    color:white;
+}
+
+.btn-capturar{
+    background:#03a9f4;
+    color:white;
+    font-weight:bold;
+}
+
+.btn-verificar{
+    background:linear-gradient(45deg,#00c853,#64dd17);
+    color:white;
+    font-size:22px;
+    font-weight:bold;
 }
 
 select, input{
-    padding:12px;
+    padding:14px;
     font-size:18px;
     width:90%;
     max-width:400px;
     margin:10px 0;
     text-align:center;
-    border-radius:8px;
-    border:1px solid #ccc;
+    border-radius:10px;
+    border:none;
+}
+
+#numero{
+    font-weight:bold;
+    font-size:20px;
 }
 
 #resultado{
-    font-size:28px;
+    font-size:30px;
     margin-top:15px;
     font-weight:bold;
 }
@@ -84,7 +112,7 @@ canvas{
 <option value="50">Bs 50</option>
 </select>
 
-<button onclick="iniciarCamara()">Activar Cámara</button>
+<button class="btn-activar" onclick="iniciarCamara()">📷 Activar Cámara</button>
 
 <div id="overlay">
     <video id="video" autoplay playsinline></video>
@@ -93,11 +121,11 @@ canvas{
 
 <canvas id="canvas"></canvas>
 
-<button onclick="capturar()">Capturar Número</button>
+<button class="btn-capturar" onclick="capturar()">📸 Capturar Número</button>
 
 <input type="text" id="numero" placeholder="Número detectado">
 
-<button onclick="verificar()">Verificar</button>
+<button class="btn-verificar" onclick="verificar()">✅ VERIFICAR</button>
 
 <div id="resultado"></div>
 
@@ -107,7 +135,6 @@ let currentStream;
 let worker;
 let workerReady = false;
 
-// === CREAR WORKER UNA SOLA VEZ ===
 async function iniciarOCR(){
     worker = await Tesseract.createWorker();
     await worker.loadLanguage('eng');
@@ -193,9 +220,19 @@ async function capturar(){
   if(numeros.length >= 7 && numeros.length <= 9){
       document.getElementById("numero").value = numeros;
       document.getElementById("resultado").innerHTML="";
+      feedbackCaptura();
   }else{
       document.getElementById("numero").value="";
   }
+}
+
+function feedbackCaptura(){
+    const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+    audio.play();
+
+    if(navigator.vibrate){
+        navigator.vibrate(200);
+    }
 }
 
 function verificar(){
@@ -223,7 +260,7 @@ resultado.innerHTML="🔴 INHABILITADO";
 resultado.style.color="red";
 }else{
 resultado.innerHTML="🟢 HABILITADO";
-resultado.style.color="green";
+resultado.style.color="#00ff00";
 }
 }
 
@@ -231,4 +268,3 @@ resultado.style.color="green";
 
 </body>
 </html>
-
