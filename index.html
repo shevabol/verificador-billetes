@@ -121,27 +121,46 @@ const rangos = {
 
 async function iniciarCamara() {
 
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  const videoDevices = devices.filter(device => device.kind === "videoinput");
+  try {
 
-  let trasera = videoDevices.find(device => device.label.toLowerCase().includes("back") || device.label.toLowerCase().includes("rear"));
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+    }
 
-  let deviceId = trasera ? trasera.deviceId : videoDevices[0].deviceId;
+    // Intentar primero con cámara trasera
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    });
 
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
+    currentStream = stream;
+    document.getElementById("video").srcObject = stream;
+
+  } catch (error) {
+
+    console.log("Error con cámara trasera, intentando normal...", error);
+
+    try {
+      // Fallback básico
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+
+      currentStream = stream;
+      document.getElementById("video").srcObject = stream;
+
+    } catch (err) {
+      alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
+      console.error(err);
+    }
+
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      deviceId: { exact: deviceId },
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    }
-  });
-
-  currentStream = stream;
-  document.getElementById("video").srcObject = stream;
 }
 
 function capturar() {
@@ -193,3 +212,4 @@ resultado.style.color="green";
 
 </body>
 </html>
+
