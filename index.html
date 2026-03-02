@@ -32,13 +32,15 @@ video{
     margin-top:20px;
 }
 
+/* Rectángulo EXACTAMENTE centrado */
 #guide{
     position:absolute;
     border:3px solid lime;
     width:60%;
     height:12%;
     left:20%;
-    top:75%;
+    top:50%;
+    transform:translateY(-50%);
     box-sizing:border-box;
     pointer-events:none;
 }
@@ -167,14 +169,16 @@ function capturar() {
 
   ctx.drawImage(video, 0, 0);
 
-  let x = canvas.width * 0.20;
-  let y = canvas.height * 0.75;
+  // === RECTÁNGULO EXACTAMENTE CENTRADO ===
   let w = canvas.width * 0.60;
   let h = canvas.height * 0.12;
+  let x = canvas.width * 0.20;
+  let y = (canvas.height - h) / 2;
 
   let imageData = ctx.getImageData(x, y, w, h);
   let data = imageData.data;
 
+  // Binarización fuerte
   for (let i = 0; i < data.length; i += 4) {
     let gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
     let contrast = gray > 130 ? 255 : 0;
