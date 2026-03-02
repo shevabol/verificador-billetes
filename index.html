@@ -10,23 +10,33 @@
 
 <style>
 body{
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     text-align:center;
     background:#f4f4f4;
     padding:20px;
 }
 
-h2{
-    margin-bottom:10px;
+video{
+    width:100%;
+    max-width:500px;
+    border-radius:15px;
+    margin-top:20px;
 }
 
-select, input{
-    padding:12px;
-    font-size:18px;
-    width:90%;
-    max-width:400px;
-    margin:10px 0;
-    text-align:center;
+#overlay{
+    position:relative;
+    display:inline-block;
+}
+
+#guide{
+    position:absolute;
+    border:4px solid lime;
+    width:60%;
+    height:12%;
+    left:20%;
+    top:75%;
+    box-sizing:border-box;
+    pointer-events:none;
 }
 
 button{
@@ -41,22 +51,23 @@ button{
     max-width:400px;
 }
 
-video{
-    width:100%;
-    max-width:500px;
-    height:auto;
-    border-radius:15px;
-    margin-top:20px;
-}
-
-canvas{
-    display:none;
+input{
+    padding:12px;
+    font-size:18px;
+    width:90%;
+    max-width:400px;
+    margin:10px 0;
+    text-align:center;
 }
 
 #resultado{
     font-size:28px;
     margin-top:20px;
     font-weight:bold;
+}
+
+canvas{
+    display:none;
 }
 </style>
 </head>
@@ -65,30 +76,18 @@ canvas{
 
 <h2>Verificador de Billetes Serie B</h2>
 
-<select id="corte">
-<option value="10">Bs 10</option>
-<option value="20">Bs 20</option>
-<option value="50">Bs 50</option>
-</select>
-
-<br>
-
 <button onclick="iniciarCamara()">Activar Cámara</button>
 
-<video id="video" autoplay playsinline></video>
-<canvas id="canvas"></canvas>
+<div id="overlay">
+    <video id="video" autoplay playsinline></video>
+    <div id="guide"></div>
+</div>
 
-<br>
+<canvas id="canvas"></canvas>
 
 <button onclick="capturar()">Capturar Número</button>
 
-<br>
-
 <input type="text" id="numero" placeholder="Número detectado">
-
-<br>
-
-<button onclick="verificar()">Verificar</button>
 
 <div id="resultado"></div>
 
@@ -96,71 +95,23 @@ canvas{
 
 let currentStream;
 
-const rangos = {
-10: [
-[77100001,77550000],[78000001,78450000],[78900001,96350000],
-[96350001,96800000],[96800001,97250000],[98150001,98600000],
-[104900001,105350000],[105350001,105800000],[106700001,107150000],
-[107600001,108050000],[108050001,108500000],[109400001,109850000]
-],
-20: [
-[87280145,91646549],[96650001,97100000],[99800001,100250000],
-[100250001,100700000],[109250001,109700000],[110600001,111050000],
-[111050001,111500000],[111950001,112400000],[112400001,112850000],
-[112850001,113300000],[114200001,114650000],[114650001,115100000],
-[115100001,115550000],[118700001,119150000],[119150001,119600000],
-[120500001,120950000]
-],
-50: [
-[67250001,67700000],[69050001,69500000],[69500001,69950000],
-[69950001,70400000],[70400001,70850000],[70850001,71300000],
-[76310012,85139995],[86400001,86850000],[90900001,91350000],
-[91800001,92250000]
-]
-};
-
 async function iniciarCamara() {
 
-  try {
-
-    if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
-    }
-
-    // Intentar primero con cámara trasera
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
-      audio: false
-    });
-
-    currentStream = stream;
-    document.getElementById("video").srcObject = stream;
-
-  } catch (error) {
-
-    console.log("Error con cámara trasera, intentando normal...", error);
-
-    try {
-      // Fallback básico
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false
-      });
-
-      currentStream = stream;
-      document.getElementById("video").srcObject = stream;
-
-    } catch (err) {
-      alert("No se pudo acceder a la cámara. Revisa permisos del navegador.");
-      console.error(err);
-    }
-
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
   }
 
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    },
+    audio:false
+  });
+
+  currentStream = stream;
+  document.getElementById("video").srcObject = stream;
 }
 
 function capturar() {
@@ -174,42 +125,49 @@ function capturar() {
 
   ctx.drawImage(video, 0, 0);
 
-  Tesseract.recognize(canvas, 'eng', {
-    tessedit_char_whitelist: '0123456789'
+  // === Coordenadas EXACTAS de la guía ===
+  let x = canvas.width * 0.20;
+  let y = canvas.height * 0.75;
+  let w = canvas.width * 0.60;
+  let h = canvas.height * 0.12;
+
+  let imageData = ctx.getImageData(x, y, w, h);
+  let data = imageData.data;
+
+  // Blanco y negro fuerte
+  for (let i = 0; i < data.length; i += 4) {
+    let gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
+    let contrast = gray > 130 ? 255 : 0;
+    data[i] = contrast;
+    data[i + 1] = contrast;
+    data[i + 2] = contrast;
+  }
+
+  let tempCanvas = document.createElement("canvas");
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  let tempCtx = tempCanvas.getContext("2d");
+  tempCtx.putImageData(imageData, 0, 0);
+
+  Tesseract.recognize(tempCanvas, 'eng', {
+    tessedit_char_whitelist: '0123456789',
+    tessedit_pageseg_mode: 7
   }).then(({ data: { text } }) => {
 
     let numeros = text.replace(/\D/g, '');
-    document.getElementById("numero").value = numeros;
+
+    // Validar longitud correcta
+    if(numeros.length >= 7 && numeros.length <= 9){
+        document.getElementById("numero").value = numeros;
+    } else {
+        document.getElementById("numero").value = "";
+    }
 
   });
 
-}
-
-function verificar(){
-
-let corte=document.getElementById("corte").value;
-let numero=document.getElementById("numero").value.trim();
-let resultado=document.getElementById("resultado");
-
-let inhabilitado=false;
-
-rangos[corte].forEach(r=>{
-if(parseInt(numero)>=r[0] && parseInt(numero)<=r[1]){
-inhabilitado=true;
-}
-});
-
-if(inhabilitado){
-resultado.innerHTML="🔴 INHABILITADO";
-resultado.style.color="red";
-}else{
-resultado.innerHTML="🟢 HABILITADO";
-resultado.style.color="green";
-}
 }
 
 </script>
 
 </body>
 </html>
-
