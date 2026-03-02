@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Verificador de Billetes BCB</title>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -15,16 +15,11 @@ body{
     padding:20px;
 }
 
-h2{
-    margin-bottom:10px;
-}
-
 #overlay{
     position:relative;
     display:inline-block;
 }
 
-/* Cámara grande estable */
 video{
     width:100%;
     max-width:500px;
@@ -32,7 +27,6 @@ video{
     margin-top:20px;
 }
 
-/* Rectángulo EXACTAMENTE centrado */
 #guide{
     position:absolute;
     border:3px solid lime;
@@ -110,31 +104,30 @@ canvas{
 <script>
 
 let currentStream;
+let worker;
+let workerReady = false;
+
+// === CREAR WORKER UNA SOLA VEZ ===
+async function iniciarOCR(){
+    worker = await Tesseract.createWorker();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+    await worker.setParameters({
+        tessedit_char_whitelist: '0123456789',
+        tessedit_pageseg_mode: 7
+    });
+    workerReady = true;
+}
+
+iniciarOCR();
 
 const rangos = {
-10: [
-[77100001,77550000],[78000001,78450000],[78900001,96350000],
-[96350001,96800000],[96800001,97250000],[98150001,98600000],
-[104900001,105350000],[105350001,105800000],[106700001,107150000],
-[107600001,108050000],[108050001,108500000],[109400001,109850000]
-],
-20: [
-[87280145,91646549],[96650001,97100000],[99800001,100250000],
-[100250001,100700000],[109250001,109700000],[110600001,111050000],
-[111050001,111500000],[111950001,112400000],[112400001,112850000],
-[112850001,113300000],[114200001,114650000],[114650001,115100000],
-[115100001,115550000],[118700001,119150000],[119150001,119600000],
-[120500001,120950000]
-],
-50: [
-[67250001,67700000],[69050001,69500000],[69500001,69950000],
-[69950001,70400000],[70400001,70850000],[70850001,71300000],
-[76310012,85139995],[86400001,86850000],[90900001,91350000],
-[91800001,92250000]
-]
+10:[[77100001,77550000]],
+20:[[87280145,91646549]],
+50:[[67250001,67700000]]
 };
 
-async function iniciarCamara() {
+async function iniciarCamara(){
 
   if (currentStream) {
     currentStream.getTracks().forEach(track => track.stop());
@@ -142,10 +135,10 @@ async function iniciarCamara() {
 
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:1280},
+        height:{ideal:720}
       },
       audio:false
     });
@@ -153,12 +146,17 @@ async function iniciarCamara() {
     currentStream = stream;
     document.getElementById("video").srcObject = stream;
 
-  }catch(error){
-    alert("No se pudo activar la cámara. Revisa permisos.");
+  }catch(e){
+    alert("No se pudo activar la cámara.");
   }
 }
 
-function capturar() {
+async function capturar(){
+
+  if(!workerReady){
+    alert("OCR aún cargando, espera un momento...");
+    return;
+  }
 
   let video = document.getElementById("video");
   let canvas = document.getElementById("canvas");
@@ -167,48 +165,37 @@ function capturar() {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.drawImage(video, 0, 0);
+  ctx.drawImage(video,0,0);
 
-  // === RECTÁNGULO EXACTAMENTE CENTRADO ===
   let w = canvas.width * 0.60;
   let h = canvas.height * 0.12;
   let x = canvas.width * 0.20;
   let y = (canvas.height - h) / 2;
 
-  let imageData = ctx.getImageData(x, y, w, h);
+  let imageData = ctx.getImageData(x,y,w,h);
   let data = imageData.data;
 
-  // Binarización fuerte
-  for (let i = 0; i < data.length; i += 4) {
-    let gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
-    let contrast = gray > 130 ? 255 : 0;
-    data[i] = contrast;
-    data[i + 1] = contrast;
-    data[i + 2] = contrast;
+  for(let i=0;i<data.length;i+=4){
+      let gray = 0.3*data[i] + 0.59*data[i+1] + 0.11*data[i+2];
+      let contrast = gray > 130 ? 255 : 0;
+      data[i]=data[i+1]=data[i+2]=contrast;
   }
 
   let tempCanvas = document.createElement("canvas");
   tempCanvas.width = w;
   tempCanvas.height = h;
-  let tempCtx = tempCanvas.getContext("2d");
-  tempCtx.putImageData(imageData, 0, 0);
+  tempCanvas.getContext("2d").putImageData(imageData,0,0);
 
-  Tesseract.recognize(tempCanvas, 'eng', {
-    tessedit_char_whitelist: '0123456789',
-    tessedit_pageseg_mode: 7
-  }).then(({ data: { text } }) => {
+  const { data:{ text } } = await worker.recognize(tempCanvas);
 
-    let numeros = text.replace(/\D/g, '');
+  let numeros = text.replace(/\D/g,'');
 
-    if(numeros.length >= 7 && numeros.length <= 9){
-        document.getElementById("numero").value = numeros;
-        document.getElementById("resultado").innerHTML="";
-    } else {
-        document.getElementById("numero").value = "";
-    }
-
-  });
-
+  if(numeros.length >= 7 && numeros.length <= 9){
+      document.getElementById("numero").value = numeros;
+      document.getElementById("resultado").innerHTML="";
+  }else{
+      document.getElementById("numero").value="";
+  }
 }
 
 function verificar(){
