@@ -116,10 +116,22 @@ const rangos = {
 };
 
 function iniciarCamara(){
-navigator.mediaDevices.getUserMedia({video:true})
+navigator.mediaDevices.getUserMedia({
+video: { facingMode: { exact: "environment" } }
+})
 .then(stream=>{
 document.getElementById("video").srcObject=stream;
 setTimeout(capturar,3000);
+})
+.catch(()=>{
+// Si falla exact, intenta modo flexible
+navigator.mediaDevices.getUserMedia({
+video: { facingMode: "environment" }
+})
+.then(stream=>{
+document.getElementById("video").srcObject=stream;
+setTimeout(capturar,3000);
+});
 });
 }
 
