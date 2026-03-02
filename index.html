@@ -24,10 +24,10 @@ h2{
     display:inline-block;
 }
 
-/* Cámara más pequeña (mitad visual) */
+/* Cámara grande estable */
 video{
     width:100%;
-    max-width:250px;
+    max-width:500px;
     border-radius:15px;
     margin-top:20px;
 }
@@ -44,34 +44,30 @@ video{
 }
 
 button{
-    padding:14px;
-    font-size:17px;
-    margin:8px;
+    padding:15px;
+    font-size:18px;
+    margin:10px;
     border:none;
     border-radius:8px;
     background:#000;
     color:white;
     width:90%;
-    max-width:350px;
+    max-width:400px;
 }
 
 select, input{
     padding:12px;
     font-size:18px;
     width:90%;
-    max-width:350px;
-    margin:8px 0;
+    max-width:400px;
+    margin:10px 0;
     text-align:center;
     border-radius:8px;
     border:1px solid #ccc;
 }
 
-#numero.detectado{
-    background:#fff3cd; /* amarillo suave */
-}
-
 #resultado{
-    font-size:26px;
+    font-size:28px;
     margin-top:15px;
     font-weight:bold;
 }
@@ -146,8 +142,8 @@ async function iniciarCamara() {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: "environment" },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       },
       audio:false
     });
@@ -156,7 +152,7 @@ async function iniciarCamara() {
     document.getElementById("video").srcObject = stream;
 
   }catch(error){
-    alert("No se pudo acceder a la cámara. Revisa permisos.");
+    alert("No se pudo activar la cámara. Revisa permisos.");
   }
 }
 
@@ -171,7 +167,6 @@ function capturar() {
 
   ctx.drawImage(video, 0, 0);
 
-  // Zona fija donde está el número
   let x = canvas.width * 0.20;
   let y = canvas.height * 0.75;
   let w = canvas.width * 0.60;
@@ -180,7 +175,6 @@ function capturar() {
   let imageData = ctx.getImageData(x, y, w, h);
   let data = imageData.data;
 
-  // Binarización fuerte
   for (let i = 0; i < data.length; i += 4) {
     let gray = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
     let contrast = gray > 130 ? 255 : 0;
@@ -202,15 +196,11 @@ function capturar() {
 
     let numeros = text.replace(/\D/g, '');
 
-    let input = document.getElementById("numero");
-
     if(numeros.length >= 7 && numeros.length <= 9){
-        input.value = numeros;
-        input.classList.add("detectado");
+        document.getElementById("numero").value = numeros;
         document.getElementById("resultado").innerHTML="";
     } else {
-        input.value = "";
-        input.classList.remove("detectado");
+        document.getElementById("numero").value = "";
     }
 
   });
@@ -222,15 +212,12 @@ function verificar(){
 let corte=document.getElementById("corte").value;
 let numero=document.getElementById("numero").value.trim();
 let resultado=document.getElementById("resultado");
-let input=document.getElementById("numero");
 
 if(numero===""){
 resultado.innerHTML="⚠️ Número inválido";
 resultado.style.color="orange";
 return;
 }
-
-input.classList.remove("detectado");
 
 let inhabilitado=false;
 
