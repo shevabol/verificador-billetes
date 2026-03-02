@@ -14,15 +14,15 @@ body{
     text-align:center;
 }
 
-h1{
-    margin:10px;
-    font-size:22px;
+h2{
+    margin:10px 0;
+    font-size:18px;
 }
 
 #cameraContainer{
     position:relative;
     width:100%;
-    height:55vh;
+    height:50vh;
     background:black;
 }
 
@@ -38,32 +38,33 @@ video{
     height:20%;
     left:15%;
     top:40%;
-    border:4px solid #00ff00;
-    border-radius:10px;
-    box-shadow:0 0 15px #00ff00;
+    border:3px solid #00ff00;
+    border-radius:8px;
 }
 
-#overlayResult{
+#overlayResultado{
     position:absolute;
-    top:10px;
+    top:12px;
     left:50%;
     transform:translateX(-50%);
-    font-size:28px;
+    padding:8px 16px;
+    font-size:20px;
     font-weight:bold;
-    padding:10px 20px;
-    border-radius:10px;
+    border-radius:8px;
     display:none;
+    z-index:10;
+    color:white;
 }
 
 #controls{
-    padding:15px;
+    padding:10px;
 }
 
 select,button{
-    padding:12px;
-    font-size:18px;
-    margin:8px;
-    border-radius:8px;
+    padding:8px;
+    font-size:16px;
+    margin:6px;
+    border-radius:6px;
     border:none;
 }
 
@@ -73,28 +74,29 @@ button{
     font-weight:bold;
 }
 
-button:hover{
+button:active{
     background:#0056b3;
 }
 
 #detectedNumber{
-    font-size:18px;
-    margin-top:10px;
+    font-size:16px;
+    margin-top:8px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>VALIDADOR DE NUMEROS DE SERIE (BILLETES 10,20,50 SERIE B)</h1>
+<h2>VALIDADOR DE NUMEROS DE SERIE (BILLETES 10,20,50 SERIE B)</h2>
 
 <div id="cameraContainer">
     <video id="video" autoplay playsinline></video>
     <div id="scanBox"></div>
-    <div id="overlayResult"></div>
+    <div id="overlayResultado"></div>
 </div>
 
 <div id="controls">
+
     <select id="corte">
         <option value="10">Corte 10</option>
         <option value="20">Corte 20</option>
@@ -104,7 +106,10 @@ button:hover{
     <button onclick="detectar()">Escanear</button>
     <button onclick="location.reload()">Escanear Otro</button>
 
-    <div id="detectedNumber">Número detectado: ---</div>
+    <div id="detectedNumber">
+        Número detectado: ---
+    </div>
+
 </div>
 
 <script>
@@ -112,7 +117,7 @@ button:hover{
 let video = document.getElementById("video");
 let numeroDetectado = "";
 
-// RANGOS INHABILITADOS (LOS QUE NO CIRCULAN)
+// ⚠️ RANGOS INHABILITADOS (EDITA CON TODOS TUS RANGOS REALES)
 const rangos = {
 10:[
 [28874500,28875000],
@@ -126,27 +131,32 @@ const rangos = {
 ]
 };
 
-// Activar cámara
-navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
+// Activar cámara trasera
+navigator.mediaDevices.getUserMedia({
+    video:{facingMode:"environment"}
+})
 .then(stream=>{
     video.srcObject = stream;
 });
 
-// Función validar
+// Validación
 function validar(numero,corte){
+
     const n = parseInt(numero);
+
     for(let r of rangos[corte]){
         if(n>=r[0] && n<=r[1]){
-            return false; // Está INHABILITADO
+            return false; // INHABILITADO
         }
     }
-    return true; // Está HABILITADO
+
+    return true; // HABILITADO
 }
 
-// Mostrar overlay
-function mostrarResultado(esValido){
+// Overlay visual
+function mostrarOverlay(esValido){
 
-    const overlay = document.getElementById("overlayResult");
+    const overlay = document.getElementById("overlayResultado");
 
     overlay.style.display="block";
 
@@ -160,7 +170,7 @@ function mostrarResultado(esValido){
 
     setTimeout(()=>{
         overlay.style.display="none";
-    },2500);
+    },2000);
 }
 
 // Detección manual
@@ -174,6 +184,7 @@ async function detectar(){
     const vw=video.videoWidth;
     const vh=video.videoHeight;
 
+    // Coordenadas EXACTAS del rectángulo verde
     const x=vw*0.15;
     const y=vh*0.40;
     const w=vw*0.70;
@@ -189,7 +200,9 @@ async function detectar(){
     const numero = text.replace(/\D/g,"");
 
     if(numero.length>=8){
+
         numeroDetectado=numero;
+
         document.getElementById("detectedNumber").innerText =
         "Número detectado: "+numero;
 
@@ -197,7 +210,7 @@ async function detectar(){
 
         const esValido = validar(numero,corte);
 
-        mostrarResultado(esValido);
+        mostrarOverlay(esValido);
     }
 }
 
