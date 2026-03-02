@@ -2,77 +2,87 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Validador de Billetes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Validador</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <style>
-body{
+*{
+    box-sizing:border-box;
     margin:0;
-    background:#0f172a;
+    padding:0;
+}
+
+body{
+    background:black;
     font-family:Arial;
+    overflow:hidden;
+}
+
+/* VIDEO FULLSCREEN */
+#container{
+    position:relative;
+    width:100vw;
+    height:100vh;
+}
+
+video{
+    position:absolute;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+/* RECTANGULO */
+#scanBox{
+    position:absolute;
+    border:4px solid #00ff88;
+    width:75%;
+    height:18%;
+    left:12.5%;
+    top:40%;
+    border-radius:10px;
+}
+
+/* PANEL INFERIOR */
+#panel{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    background:rgba(15,23,42,0.95);
+    padding:20px;
+    border-top-left-radius:20px;
+    border-top-right-radius:20px;
     text-align:center;
     color:white;
 }
 
-h2{
-    margin-top:15px;
-}
-
-#container{
-    position:relative;
-    display:inline-block;
-}
-
-video{
-    width:100%;
-    max-width:480px;
-    border-radius:12px;
-}
-
-#scanBox{
-    position:absolute;
-    border:4px solid #00ff88;
-    width:70%;
-    height:20%;
-    left:15%;
-    top:40%;
-    border-radius:8px;
-}
-
+/* NUMERO */
 #detectedNumber{
-    margin-top:15px;
     font-size:20px;
-    background:#1e293b;
-    padding:12px;
-    border-radius:8px;
-    width:300px;
-    margin-left:auto;
-    margin-right:auto;
-    transition:0.3s;
+    margin-bottom:10px;
+    min-height:25px;
 }
 
-.detectado{
-    background:#064e3b !important;
-    box-shadow:0 0 10px #00ff88;
-}
-
+/* SELECT */
 select{
-    margin-top:15px;
-    padding:10px;
+    width:100%;
+    padding:12px;
     font-size:18px;
-    border-radius:6px;
+    border-radius:8px;
+    margin-bottom:12px;
     border:none;
 }
 
+/* BOTONES */
 button{
-    margin:10px;
-    padding:16px 30px;
+    width:100%;
+    padding:18px;
     font-size:20px;
     border:none;
-    border-radius:8px;
-    cursor:pointer;
+    border-radius:12px;
+    margin-bottom:10px;
     font-weight:bold;
-    transition:0.2s;
 }
 
 #btnValidar{
@@ -80,18 +90,15 @@ button{
     color:black;
 }
 
-#btnValidar:active{
-    transform:scale(0.95);
-}
-
 #btnReset{
     background:#334155;
     color:white;
 }
 
+/* RESULTADO */
 #resultado{
-    margin-top:15px;
-    font-size:24px;
+    margin-top:10px;
+    font-size:22px;
     font-weight:bold;
     min-height:30px;
 }
@@ -100,32 +107,34 @@ button{
 
 <body>
 
-<h2>Validador de Billetes</h2>
-
 <div id="container">
     <video id="video" autoplay playsinline></video>
     <div id="scanBox"></div>
+
+    <div id="panel">
+
+        <div id="detectedNumber">
+            Número detectado: ---
+        </div>
+
+        <select id="corte">
+            <option value="10">Billete 10</option>
+            <option value="20">Billete 20</option>
+            <option value="50">Billete 50</option>
+        </select>
+
+        <button id="btnValidar">VALIDAR</button>
+        <button id="btnReset">ESCANEAR OTRO</button>
+
+        <div id="resultado"></div>
+
+    </div>
 </div>
-
-<div id="detectedNumber">Número detectado: ---</div>
-
-<select id="corte">
-    <option value="10">Billete 10</option>
-    <option value="20">Billete 20</option>
-    <option value="50">Billete 50</option>
-</select>
-
-<br>
-
-<button id="btnValidar">VALIDAR</button>
-<button id="btnReset">ESCANEAR OTRO</button>
-
-<div id="resultado"></div>
 
 <script>
 
 // =====================
-// RANGOS COMPLETOS
+// RANGOS
 // =====================
 
 const rangos = {
@@ -190,6 +199,7 @@ navigator.mediaDevices.getUserMedia({
     video.srcObject = stream;
 });
 
+// OCR
 async function detectar(){
 
     const canvas = document.createElement("canvas");
@@ -206,9 +216,8 @@ async function detectar(){
 
     if(match.length>=8){
         numeroDetectado = match;
-        const campo = document.getElementById("detectedNumber");
-        campo.innerText = "Número detectado: "+numeroDetectado;
-        campo.classList.add("detectado");
+        document.getElementById("detectedNumber").innerText =
+        "Número detectado: "+numeroDetectado;
     }
 
     setTimeout(detectar,1000);
@@ -216,24 +225,26 @@ async function detectar(){
 
 video.onloadedmetadata = ()=> detectar();
 
+// VALIDAR
 function validar(){
 
     if(!numeroDetectado) return;
 
     const corteSeleccionado = document.getElementById("corte").value;
     const num = parseInt(numeroDetectado);
-    let encontrado = false;
+    let inhabilitado = false;
 
     for(let rango of rangos[corteSeleccionado]){
         if(num>=rango[0] && num<=rango[1]){
-            mostrarResultado("✅ VÁLIDO",true);
-            encontrado = true;
+            inhabilitado = true;
             break;
         }
     }
 
-    if(!encontrado){
-        mostrarResultado("❌ NO VÁLIDO",false);
+    if(inhabilitado){
+        mostrarResultado("❌ INHABILITADO",false);
+    }else{
+        mostrarResultado("✅ HABILITADO",true);
     }
 }
 
@@ -253,10 +264,10 @@ function mostrarResultado(texto,ok){
 document.getElementById("btnValidar").onclick = validar;
 
 document.getElementById("btnReset").onclick = ()=>{
-    numeroDetectado = "";
-    document.getElementById("detectedNumber").innerText = "Número detectado: ---";
-    document.getElementById("detectedNumber").classList.remove("detectado");
-    document.getElementById("resultado").innerText = "";
+    numeroDetectado="";
+    document.getElementById("detectedNumber").innerText =
+    "Número detectado: ---";
+    document.getElementById("resultado").innerText="";
 };
 
 </script>
