@@ -1,38 +1,28 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Validador</title>
+<title>Validador Serie B</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <style>
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-}
-
 body{
+    margin:0;
     font-family:Arial;
-    background:#0f172a;
+    background:#111;
     color:white;
     text-align:center;
 }
 
-/* TITULO */
-#titulo{
-    padding:15px;
-    font-size:18px;
-    font-weight:bold;
-    background:#111827;
+h1{
+    margin:10px;
+    font-size:22px;
 }
 
-/* VIDEO */
-#videoContainer{
+#cameraContainer{
     position:relative;
     width:100%;
-    height:65vh;
+    height:55vh;
     background:black;
 }
 
@@ -42,254 +32,174 @@ video{
     object-fit:cover;
 }
 
-/* RECTANGULO */
 #scanBox{
     position:absolute;
-    border:4px solid #00ff88;
     width:70%;
     height:20%;
     left:15%;
     top:40%;
+    border:4px solid #00ff00;
     border-radius:10px;
+    box-shadow:0 0 15px #00ff00;
 }
 
-/* PANEL */
-#panel{
+#overlayResult{
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:28px;
+    font-weight:bold;
+    padding:10px 20px;
+    border-radius:10px;
+    display:none;
+}
+
+#controls{
     padding:15px;
 }
 
-#detectedNumber{
+select,button{
+    padding:12px;
     font-size:18px;
-    margin-bottom:10px;
-    min-height:22px;
-}
-
-select{
-    width:100%;
-    padding:10px;
-    font-size:16px;
+    margin:8px;
     border-radius:8px;
-    margin-bottom:10px;
     border:none;
 }
 
 button{
-    width:100%;
-    padding:16px;
-    font-size:18px;
-    border:none;
-    border-radius:10px;
-    margin-bottom:10px;
-    font-weight:bold;
-}
-
-#btnValidar{
-    background:#00ff88;
-    color:black;
-}
-
-#btnReset{
-    background:#334155;
+    background:#007bff;
     color:white;
+    font-weight:bold;
 }
 
-#resultado{
+button:hover{
+    background:#0056b3;
+}
+
+#detectedNumber{
+    font-size:18px;
     margin-top:10px;
-    font-size:22px;
-    font-weight:bold;
-    min-height:30px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="titulo">
-VALIDADOR DE NUMEROS DE SERIE (BILLETES 10,20,50 SERIE B)
-</div>
+<h1>VALIDADOR DE NUMEROS DE SERIE (BILLETES 10,20,50 SERIE B)</h1>
 
-<div id="videoContainer">
+<div id="cameraContainer">
     <video id="video" autoplay playsinline></video>
     <div id="scanBox"></div>
+    <div id="overlayResult"></div>
 </div>
 
-<div id="panel">
-
-    <div id="detectedNumber">
-        Número detectado: ---
-    </div>
-
+<div id="controls">
     <select id="corte">
-        <option value="10">Billete 10</option>
-        <option value="20">Billete 20</option>
-        <option value="50">Billete 50</option>
+        <option value="10">Corte 10</option>
+        <option value="20">Corte 20</option>
+        <option value="50">Corte 50</option>
     </select>
 
-    <button id="btnValidar">VALIDAR</button>
-    <button id="btnReset">ESCANEAR OTRO</button>
+    <button onclick="detectar()">Escanear</button>
+    <button onclick="location.reload()">Escanear Otro</button>
 
-    <div id="resultado"></div>
-
+    <div id="detectedNumber">Número detectado: ---</div>
 </div>
 
 <script>
 
-// =====================
-// RANGOS (INHABILITADOS)
-// =====================
-
-const rangos = {
-
-10: [
-[77100001,77550000],
-[78000001,78450000],
-[78900001,96350000],
-[96350001,96800000],
-[96800001,97250000],
-[98150001,98600000],
-[104900001,105350000],
-[105350001,105800000],
-[106700001,107150000],
-[107600001,108050000],
-[108050001,108500000],
-[109400001,109850000]
-],
-
-20: [
-[87280145,91646549],
-[96650001,97100000],
-[99800001,100250000],
-[100250001,100700000],
-[109250001,109700000],
-[110600001,111050000],
-[111050001,111500000],
-[111950001,112400000],
-[112400001,112850000],
-[112850001,113300000],
-[114200001,114650000],
-[114650001,115100000],
-[115100001,115550000],
-[118700001,119150000],
-[119150001,119600000],
-[120500001,120950000]
-],
-
-50: [
-[67250001,67700000],
-[69050001,69500000],
-[69500001,69950000],
-[69950001,70400000],
-[70400001,70850000],
-[70850001,71300000],
-[76310012,85139995],
-[86400001,86850000],
-[90900001,91350000],
-[91800001,92250000]
-]
-
-};
-
+let video = document.getElementById("video");
 let numeroDetectado = "";
 
-const video = document.getElementById("video");
+// RANGOS INHABILITADOS (LOS QUE NO CIRCULAN)
+const rangos = {
+10:[
+[28874500,28875000],
+[50000000,50001000]
+],
+20:[
+[30000000,30005000]
+],
+50:[
+[90000000,90002000]
+]
+};
 
-navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:"environment" }
-})
+// Activar cámara
+navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})
 .then(stream=>{
     video.srcObject = stream;
 });
 
-// =====================
-// OCR SOLO EN RECTANGULO
-// =====================
-
-async function detectar(){
-
-    if(video.videoWidth === 0){
-        setTimeout(detectar,500);
-        return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-
-    // Coordenadas exactas del rectángulo verde
-    const x = vw * 0.15;
-    const y = vh * 0.40;
-    const w = vw * 0.70;
-    const h = vh * 0.20;
-
-    canvas.width = w;
-    canvas.height = h;
-
-    ctx.drawImage(video, x, y, w, h, 0, 0, w, h);
-
-    const { data:{ text } } = await Tesseract.recognize(canvas,"eng");
-
-    const match = text.replace(/\D/g,"");
-
-    if(match.length>=8){
-        numeroDetectado = match;
-        document.getElementById("detectedNumber").innerText =
-        "Número detectado: "+numeroDetectado;
-    }
-
-    setTimeout(detectar,1000);
-}
-
-video.onloadedmetadata = ()=> detectar();
-
-// =====================
-// VALIDAR
-// =====================
-
-function validar(){
-
-    if(!numeroDetectado) return;
-
-    const corteSeleccionado = document.getElementById("corte").value;
-    const num = parseInt(numeroDetectado);
-    let inhabilitado = false;
-
-    for(let rango of rangos[corteSeleccionado]){
-        if(num>=rango[0] && num<=rango[1]){
-            inhabilitado = true;
-            break;
+// Función validar
+function validar(numero,corte){
+    const n = parseInt(numero);
+    for(let r of rangos[corte]){
+        if(n>=r[0] && n<=r[1]){
+            return false; // Está INHABILITADO
         }
     }
+    return true; // Está HABILITADO
+}
 
-    if(inhabilitado){
-        mostrarResultado("BILLETE INHABILITADO",false);
+// Mostrar overlay
+function mostrarResultado(esValido){
+
+    const overlay = document.getElementById("overlayResult");
+
+    overlay.style.display="block";
+
+    if(esValido){
+        overlay.innerText="BILLETE HABILITADO";
+        overlay.style.background="rgba(0,150,0,0.85)";
     }else{
-        mostrarResultado("BILLETE HABILITADO",true);
+        overlay.innerText="BILLETE INHABILITADO";
+        overlay.style.background="rgba(200,0,0,0.85)";
+    }
+
+    setTimeout(()=>{
+        overlay.style.display="none";
+    },2500);
+}
+
+// Detección manual
+async function detectar(){
+
+    if(video.videoWidth===0) return;
+
+    const canvas=document.createElement("canvas");
+    const ctx=canvas.getContext("2d");
+
+    const vw=video.videoWidth;
+    const vh=video.videoHeight;
+
+    const x=vw*0.15;
+    const y=vh*0.40;
+    const w=vw*0.70;
+    const h=vh*0.20;
+
+    canvas.width=w;
+    canvas.height=h;
+
+    ctx.drawImage(video,x,y,w,h,0,0,w,h);
+
+    const {data:{text}} = await Tesseract.recognize(canvas,"eng");
+
+    const numero = text.replace(/\D/g,"");
+
+    if(numero.length>=8){
+        numeroDetectado=numero;
+        document.getElementById("detectedNumber").innerText =
+        "Número detectado: "+numero;
+
+        const corte=document.getElementById("corte").value;
+
+        const esValido = validar(numero,corte);
+
+        mostrarResultado(esValido);
     }
 }
-
-function mostrarResultado(texto,ok){
-
-    const r = document.getElementById("resultado");
-    r.innerText = texto;
-    r.style.color = ok ? "#00ff88" : "#ff4444";
-
-    const audio = new Audio(ok ?
-        "https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" :
-        "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-    );
-    audio.play();
-}
-
-document.getElementById("btnValidar").onclick = validar;
-
-document.getElementById("btnReset").onclick = ()=>{
-    numeroDetectado="";
-    document.getElementById("detectedNumber").innerText =
-    "Número detectado: ---";
-    document.getElementById("resultado").innerText="";
-};
 
 </script>
 
