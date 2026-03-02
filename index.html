@@ -3,30 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <title>Verificador de Billetes BCB</title>
+
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body{
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     text-align:center;
     background:#f4f4f4;
     padding:20px;
 }
+
+h2{
+    margin-bottom:10px;
+}
+
+select, input{
+    padding:12px;
+    font-size:18px;
+    width:90%;
+    max-width:400px;
+    margin:10px 0;
+    text-align:center;
+}
+
 button{
     padding:15px;
     font-size:18px;
     margin:10px;
+    border:none;
+    border-radius:8px;
+    background:#000;
+    color:white;
+    width:90%;
+    max-width:400px;
 }
-input{
-    padding:10px;
-    font-size:18px;
-    width:250px;
-    text-align:center;
-}
-#resultado{
-    font-size:28px;
-    margin-top:20px;
-    font-weight:bold;
-}
+
 video{
     width:100%;
     max-width:500px;
@@ -34,8 +48,15 @@ video{
     border-radius:15px;
     margin-top:20px;
 }
+
 canvas{
     display:none;
+}
+
+#resultado{
+    font-size:28px;
+    margin-top:20px;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -50,16 +71,18 @@ canvas{
 <option value="50">Bs 50</option>
 </select>
 
-<br><br>
+<br>
 
-<button onclick="iniciarCamara()">Escanear con Cámara</button>
+<button onclick="iniciarCamara()">Activar Cámara</button>
+
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
 
 <br>
 
-<video id="video" autoplay></video>
-<canvas id="canvas"></canvas>
+<button onclick="capturar()">Capturar Número</button>
 
-<br><br>
+<br>
 
 <input type="text" id="numero" placeholder="Número detectado">
 
@@ -71,96 +94,54 @@ canvas{
 
 <script>
 
+let currentStream;
+
 const rangos = {
 10: [
-[77100001,77550000],
-[78000001,78450000],
-[78900001,96350000],
-[96350001,96800000],
-[96800001,97250000],
-[98150001,98600000],
-[104900001,105350000],
-[105350001,105800000],
-[106700001,107150000],
-[107600001,108050000],
-[108050001,108500000],
-[109400001,109850000]
+[77100001,77550000],[78000001,78450000],[78900001,96350000],
+[96350001,96800000],[96800001,97250000],[98150001,98600000],
+[104900001,105350000],[105350001,105800000],[106700001,107150000],
+[107600001,108050000],[108050001,108500000],[109400001,109850000]
 ],
 20: [
-[87280145,91646549],
-[96650001,97100000],
-[99800001,100250000],
-[100250001,100700000],
-[109250001,109700000],
-[110600001,111050000],
-[111050001,111500000],
-[111950001,112400000],
-[112400001,112850000],
-[112850001,113300000],
-[114200001,114650000],
-[114650001,115100000],
-[115100001,115550000],
-[118700001,119150000],
-[119150001,119600000],
+[87280145,91646549],[96650001,97100000],[99800001,100250000],
+[100250001,100700000],[109250001,109700000],[110600001,111050000],
+[111050001,111500000],[111950001,112400000],[112400001,112850000],
+[112850001,113300000],[114200001,114650000],[114650001,115100000],
+[115100001,115550000],[118700001,119150000],[119150001,119600000],
 [120500001,120950000]
 ],
 50: [
-[67250001,67700000],
-[69050001,69500000],
-[69500001,69950000],
-[69950001,70400000],
-[70400001,70850000],
-[70850001,71300000],
-[76310012,85139995],
-[86400001,86850000],
-[90900001,91350000],
+[67250001,67700000],[69050001,69500000],[69500001,69950000],
+[69950001,70400000],[70400001,70850000],[70850001,71300000],
+[76310012,85139995],[86400001,86850000],[90900001,91350000],
 [91800001,92250000]
 ]
 };
-
-let currentStream;
 
 async function iniciarCamara() {
 
   const devices = await navigator.mediaDevices.enumerateDevices();
   const videoDevices = devices.filter(device => device.kind === "videoinput");
 
-  const selector = document.createElement("select");
-  selector.id = "cameraSelect";
+  let trasera = videoDevices.find(device => device.label.toLowerCase().includes("back") || device.label.toLowerCase().includes("rear"));
 
-  videoDevices.forEach((device, index) => {
-    const option = document.createElement("option");
-    option.value = device.deviceId;
-    option.text = device.label || `Cámara ${index + 1}`;
-    selector.appendChild(option);
-  });
-
-  document.body.appendChild(selector);
-
-  selector.onchange = () => abrirCamara(selector.value);
-
-  abrirCamara(videoDevices[0].deviceId);
-}
-
-async function abrirCamara(deviceId) {
+  let deviceId = trasera ? trasera.deviceId : videoDevices[0].deviceId;
 
   if (currentStream) {
     currentStream.getTracks().forEach(track => track.stop());
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({
-video: {
-  deviceId: { exact: deviceId },
-  width: { ideal: 1920 },
-  height: { ideal: 1080 }
-    <button onclick="capturar()">Capturar Número</button>
-}
+    video: {
+      deviceId: { exact: deviceId },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
   });
 
   currentStream = stream;
-
   document.getElementById("video").srcObject = stream;
-
 }
 
 function capturar() {
@@ -171,6 +152,7 @@ function capturar() {
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+
   ctx.drawImage(video, 0, 0);
 
   Tesseract.recognize(canvas, 'eng', {
@@ -185,14 +167,15 @@ function capturar() {
 }
 
 function verificar(){
+
 let corte=document.getElementById("corte").value;
-let numero=parseInt(document.getElementById("numero").value);
+let numero=document.getElementById("numero").value.trim();
 let resultado=document.getElementById("resultado");
 
 let inhabilitado=false;
 
 rangos[corte].forEach(r=>{
-if(numero>=r[0] && numero<=r[1]){
+if(parseInt(numero)>=r[0] && parseInt(numero)<=r[1]){
 inhabilitado=true;
 }
 });
@@ -209,6 +192,4 @@ resultado.style.color="green";
 </script>
 
 </body>
-
 </html>
-
