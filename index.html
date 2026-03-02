@@ -28,7 +28,10 @@ input{
     font-weight:bold;
 }
 video{
-    width:300px;
+    width:100%;
+    max-width:500px;
+    height:auto;
+    border-radius:15px;
     margin-top:20px;
 }
 canvas{
@@ -146,7 +149,12 @@ async function abrirCamara(deviceId) {
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: { deviceId: { exact: deviceId } }
+video: {
+  deviceId: { exact: deviceId },
+  width: { ideal: 1920 },
+  height: { ideal: 1080 }
+    <button onclick="capturar()">Capturar Número</button>
+}
   });
 
   currentStream = stream;
@@ -203,3 +211,4 @@ resultado.style.color="green";
 </body>
 
 </html>
+
