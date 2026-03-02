@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Validador Inteligente</title>
+<title>Validador</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
 <style>
@@ -33,28 +33,34 @@ video{
     left:15%;
     top:40%;
     border-radius:8px;
-    box-shadow:0 0 15px #00ff88;
 }
 
 #detectedNumber{
     margin-top:15px;
     font-size:20px;
     background:#1e293b;
-    padding:10px;
+    padding:12px;
     border-radius:8px;
-    width:280px;
+    width:300px;
     margin-left:auto;
     margin-right:auto;
+    transition:0.3s;
+}
+
+.detectado{
+    background:#064e3b !important;
+    box-shadow:0 0 10px #00ff88;
 }
 
 button{
     margin:10px;
-    padding:15px 25px;
-    font-size:18px;
+    padding:18px 30px;
+    font-size:20px;
     border:none;
-    border-radius:8px;
+    border-radius:10px;
     cursor:pointer;
     font-weight:bold;
+    transition:0.2s;
 }
 
 #btnValidar{
@@ -62,20 +68,20 @@ button{
     color:black;
 }
 
+#btnValidar:active{
+    transform:scale(0.95);
+}
+
 #btnReset{
     background:#334155;
     color:white;
 }
 
-#btnAuto{
-    background:#2563eb;
-    color:white;
-}
-
 #resultado{
     margin-top:15px;
-    font-size:22px;
+    font-size:24px;
     font-weight:bold;
+    min-height:30px;
 }
 </style>
 </head>
@@ -93,7 +99,6 @@ button{
 
 <button id="btnValidar">VALIDAR</button>
 <button id="btnReset">ESCANEAR OTRO</button>
-<button id="btnAuto">Modo Automático: OFF</button>
 
 <div id="resultado"></div>
 
@@ -154,17 +159,7 @@ const rangos = {
 
 };
 
-// =====================
-// VARIABLES
-// =====================
-
 let numeroDetectado = "";
-let modoAutomatico = false;
-let bloqueoAuto = false;
-
-// =====================
-// CAMARA
-// =====================
 
 const video = document.getElementById("video");
 
@@ -175,11 +170,8 @@ navigator.mediaDevices.getUserMedia({
     video.srcObject = stream;
 });
 
-// =====================
-// OCR CONTINUO
-// =====================
-
 async function detectar(){
+
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
@@ -191,13 +183,12 @@ async function detectar(){
     const { data:{ text } } = await Tesseract.recognize(canvas,"eng");
 
     const match = text.replace(/\D/g,"");
+
     if(match.length>=8){
         numeroDetectado = match;
-        document.getElementById("detectedNumber").innerText = "Número detectado: "+numeroDetectado;
-
-        if(modoAutomatico && !bloqueoAuto){
-            validar();
-        }
+        const campo = document.getElementById("detectedNumber");
+        campo.innerText = "Número detectado: "+numeroDetectado;
+        campo.classList.add("detectado");
     }
 
     setTimeout(detectar,1000);
@@ -205,15 +196,9 @@ async function detectar(){
 
 video.onloadedmetadata = ()=> detectar();
 
-// =====================
-// VALIDACION
-// =====================
-
 function validar(){
 
     if(!numeroDetectado) return;
-
-    if(modoAutomatico) bloqueoAuto = true;
 
     const num = parseInt(numeroDetectado);
     let encontrado = false;
@@ -231,20 +216,10 @@ function validar(){
     if(!encontrado){
         mostrarResultado("❌ NO VÁLIDO",false);
     }
-
-    if(modoAutomatico){
-        setTimeout(()=>{
-            resetear();
-            bloqueoAuto = false;
-        },2000);
-    }
 }
 
-// =====================
-// RESULTADO
-// =====================
-
 function mostrarResultado(texto,ok){
+
     const r = document.getElementById("resultado");
     r.innerText = texto;
     r.style.color = ok ? "#00ff88" : "#ff4444";
@@ -256,29 +231,14 @@ function mostrarResultado(texto,ok){
     audio.play();
 }
 
-// =====================
-// BOTONES
-// =====================
-
 document.getElementById("btnValidar").onclick = validar;
 
-document.getElementById("btnReset").onclick = resetear;
-
-document.getElementById("btnAuto").onclick = ()=>{
-    modoAutomatico = !modoAutomatico;
-    document.getElementById("btnAuto").innerText =
-        "Modo Automático: "+(modoAutomatico ? "ON":"OFF");
-};
-
-// =====================
-// RESET
-// =====================
-
-function resetear(){
+document.getElementById("btnReset").onclick = ()=>{
     numeroDetectado = "";
     document.getElementById("detectedNumber").innerText = "Número detectado: ---";
+    document.getElementById("detectedNumber").classList.remove("detectado");
     document.getElementById("resultado").innerText = "";
-}
+};
 
 </script>
 
