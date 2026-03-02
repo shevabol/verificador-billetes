@@ -10,21 +10,24 @@
 body{
     font-family: Arial, sans-serif;
     text-align:center;
-    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    background:#f2f2f2;
     margin:0;
-    color:white;
+}
+
+h2{
+    margin-top:15px;
 }
 
 #videoContainer{
     position:relative;
     width:100%;
     max-width:500px;
-    margin:20px auto;
+    margin:auto;
 }
 
 video{
     width:100%;
-    border-radius:15px;
+    border-radius:12px;
 }
 
 #scanArea{
@@ -33,34 +36,30 @@ video{
     height:15%;
     top:42.5%;
     left:10%;
-    border:3px solid #00ffcc;
-    border-radius:10px;
+    border:3px solid red;
+    border-radius:8px;
     box-sizing:border-box;
-    box-shadow:0 0 15px #00ffcc;
 }
 
 button{
+    padding:15px;
+    margin:10px;
+    font-size:18px;
     border:none;
-    border-radius:12px;
+    border-radius:8px;
     cursor:pointer;
 }
 
 #activar{
-    background:#2196f3;
+    background:#007bff;
     color:white;
-    padding:12px 25px;
-    font-size:16px;
-    margin:10px;
 }
 
 #validar{
-    background:linear-gradient(45deg,#00c853,#64dd17);
+    background:#28a745;
     color:white;
-    padding:20px 40px;
     font-size:22px;
     font-weight:bold;
-    margin:20px auto;
-    display:block;
     width:80%;
     max-width:400px;
 }
@@ -68,12 +67,11 @@ button{
 #numero{
     font-size:24px;
     font-weight:bold;
-    color:#00ffcc;
     margin-top:10px;
 }
 
 #resultado{
-    font-size:26px;
+    font-size:28px;
     font-weight:bold;
     margin-top:15px;
 }
@@ -114,39 +112,39 @@ async function iniciarOCR(){
 
 document.getElementById("activar").onclick = async function(){
 
-    numeroSpan.innerText = "---";
-    resultado.innerText = "";
-    ultimoNumero = "";
+    numeroSpan.innerText="---";
+    resultado.innerText="";
+    ultimoNumero="";
 
     if(!worker) await iniciarOCR();
 
     const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } }
+        video: {
+            facingMode: { exact: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }
     });
 
     video.srcObject = stream;
-
-    // 🔹 Esperar que el video esté realmente listo
-    video.onloadedmetadata = () => {
-        escaneando = true;
-        detectar();
-    };
+    escaneando = true;
+    detectar();
 };
 
 async function detectar(){
 
     if(!escaneando) return;
 
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
     const vw = video.videoWidth;
     const vh = video.videoHeight;
 
-    if(!vw || !vh){
-        setTimeout(detectar, 500);
+    if(vw === 0){
+        setTimeout(detectar, 300);
         return;
     }
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
 
     canvas.width = vw * 0.8;
     canvas.height = vh * 0.15;
@@ -164,24 +162,27 @@ async function detectar(){
     );
 
     const { data:{ text } } = await worker.recognize(canvas);
+
     let limpio = text.replace(/[^0-9]/g,"");
 
     if(limpio.length >= 7){
         ultimoNumero = limpio;
         numeroSpan.innerText = limpio;
-        numeroSpan.style.color="#00ff00";
+        numeroSpan.style.color="green";
         escaneando = false;
-        confirmar();
+        feedback();
         return;
     }
 
-    setTimeout(detectar, 900);
+    setTimeout(detectar, 800);
 }
 
-function confirmar(){
+function feedback(){
+    // Sonido
     const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
     audio.play();
 
+    // Vibración
     if(navigator.vibrate){
         navigator.vibrate(200);
     }
@@ -190,8 +191,8 @@ function confirmar(){
 document.getElementById("validar").onclick = function(){
 
     if(!ultimoNumero){
-        resultado.innerText = "No se detectó número válido.";
-        resultado.style.color="yellow";
+        resultado.innerText="No se detectó número válido.";
+        resultado.style.color="orange";
         return;
     }
 
@@ -202,11 +203,11 @@ document.getElementById("validar").onclick = function(){
     ];
 
     if(anulados.includes(ultimoNumero)){
-        resultado.innerHTML = "❌ INHABILITADO";
+        resultado.innerHTML="❌ INHABILITADO";
         resultado.style.color="red";
     }else{
-        resultado.innerHTML = "✅ HABILITADO";
-        resultado.style.color="#00ff00";
+        resultado.innerHTML="✅ HABILITADO";
+        resultado.style.color="green";
     }
 };
 
