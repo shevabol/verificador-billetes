@@ -115,40 +115,65 @@ const rangos = {
 ]
 };
 
-function iniciarCamara(){
-navigator.mediaDevices.getUserMedia({
-video: { facingMode: { exact: "environment" } }
-})
-.then(stream=>{
-document.getElementById("video").srcObject=stream;
-setTimeout(capturar,3000);
-})
-.catch(()=>{
-// Si falla exact, intenta modo flexible
-navigator.mediaDevices.getUserMedia({
-video: { facingMode: "environment" }
-})
-.then(stream=>{
-document.getElementById("video").srcObject=stream;
-setTimeout(capturar,3000);
-});
-});
+let currentStream;
+
+async function iniciarCamara() {
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoDevices = devices.filter(device => device.kind === "videoinput");
+
+  const selector = document.createElement("select");
+  selector.id = "cameraSelect";
+
+  videoDevices.forEach((device, index) => {
+    const option = document.createElement("option");
+    option.value = device.deviceId;
+    option.text = device.label || `Cámara ${index + 1}`;
+    selector.appendChild(option);
+  });
+
+  document.body.appendChild(selector);
+
+  selector.onchange = () => abrirCamara(selector.value);
+
+  abrirCamara(videoDevices[0].deviceId);
 }
 
-function capturar(){
-let video=document.getElementById("video");
-let canvas=document.getElementById("canvas");
-let ctx=canvas.getContext("2d");
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-ctx.drawImage(video,0,0);
-Tesseract.recognize(canvas,'eng',{
-tessedit_char_whitelist:'0123456789'
-})
-.then(({data:{text}})=>{
-let numeros=text.replace(/\D/g,'');
-document.getElementById("numero").value=numeros;
-});
+async function abrirCamara(deviceId) {
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { deviceId: { exact: deviceId } }
+  });
+
+  currentStream = stream;
+
+  document.getElementById("video").srcObject = stream;
+
+}
+
+function capturar() {
+
+  let video = document.getElementById("video");
+  let canvas = document.getElementById("canvas");
+  let ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  Tesseract.recognize(canvas, 'eng', {
+    tessedit_char_whitelist: '0123456789'
+  }).then(({ data: { text } }) => {
+
+    let numeros = text.replace(/\D/g, '');
+    document.getElementById("numero").value = numeros;
+
+  });
+
 }
 
 function verificar(){
@@ -176,4 +201,5 @@ resultado.style.color="green";
 </script>
 
 </body>
+
 </html>
