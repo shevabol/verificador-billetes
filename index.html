@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Verificador de Billetes BCB</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
+<style>
+body{
+    font-family: Arial;
+    text-align:center;
+    background:#f4f4f4;
+    padding:20px;
+}
+button{
+    padding:15px;
+    font-size:18px;
+    margin:10px;
+}
+input{
+    padding:10px;
+    font-size:18px;
+    width:250px;
+    text-align:center;
+}
+#resultado{
+    font-size:28px;
+    margin-top:20px;
+    font-weight:bold;
+}
+video{
+    width:300px;
+    margin-top:20px;
+}
+canvas{
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Verificador de Billetes Serie B</h2>
+
+<select id="corte">
+<option value="10">Bs 10</option>
+<option value="20">Bs 20</option>
+<option value="50">Bs 50</option>
+</select>
+
+<br><br>
+
+<button onclick="iniciarCamara()">Escanear con Cámara</button>
+
+<br>
+
+<video id="video" autoplay></video>
+<canvas id="canvas"></canvas>
+
+<br><br>
+
+<input type="text" id="numero" placeholder="Número detectado">
+
+<br>
+
+<button onclick="verificar()">Verificar</button>
+
+<div id="resultado"></div>
+
+<script>
+
+const rangos = {
+10: [
+[77100001,77550000],
+[78000001,78450000],
+[78900001,96350000],
+[96350001,96800000],
+[96800001,97250000],
+[98150001,98600000],
+[104900001,105350000],
+[105350001,105800000],
+[106700001,107150000],
+[107600001,108050000],
+[108050001,108500000],
+[109400001,109850000]
+],
+20: [
+[87280145,91646549],
+[96650001,97100000],
+[99800001,100250000],
+[100250001,100700000],
+[109250001,109700000],
+[110600001,111050000],
+[111050001,111500000],
+[111950001,112400000],
+[112400001,112850000],
+[112850001,113300000],
+[114200001,114650000],
+[114650001,115100000],
+[115100001,115550000],
+[118700001,119150000],
+[119150001,119600000],
+[120500001,120950000]
+],
+50: [
+[67250001,67700000],
+[69050001,69500000],
+[69500001,69950000],
+[69950001,70400000],
+[70400001,70850000],
+[70850001,71300000],
+[76310012,85139995],
+[86400001,86850000],
+[90900001,91350000],
+[91800001,92250000]
+]
+};
+
+function iniciarCamara(){
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+document.getElementById("video").srcObject=stream;
+setTimeout(capturar,3000);
+});
+}
+
+function capturar(){
+let video=document.getElementById("video");
+let canvas=document.getElementById("canvas");
+let ctx=canvas.getContext("2d");
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+ctx.drawImage(video,0,0);
+Tesseract.recognize(canvas,'eng',{
+tessedit_char_whitelist:'0123456789'
+})
+.then(({data:{text}})=>{
+let numeros=text.replace(/\D/g,'');
+document.getElementById("numero").value=numeros;
+});
+}
+
+function verificar(){
+let corte=document.getElementById("corte").value;
+let numero=parseInt(document.getElementById("numero").value);
+let resultado=document.getElementById("resultado");
+
+let inhabilitado=false;
+
+rangos[corte].forEach(r=>{
+if(numero>=r[0] && numero<=r[1]){
+inhabilitado=true;
+}
+});
+
+if(inhabilitado){
+resultado.innerHTML="🔴 INHABILITADO";
+resultado.style.color="red";
+}else{
+resultado.innerHTML="🟢 HABILITADO";
+resultado.style.color="green";
+}
+}
+
+</script>
+
+</body>
+</html>
